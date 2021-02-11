@@ -1,14 +1,10 @@
 package com.example.firebaseexample;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.provider.ContactsContract;
-import android.util.Log;
 import android.util.Patterns;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -129,15 +125,12 @@ public class MainActivity extends AppCompatActivity {
             }
 
             //comlete sign in with authentication using the mAuth obect and an oncomplelistener to see if the provided credentials exist in the userbase
-            mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                @Override
-                public void onComplete(@NonNull Task<AuthResult> task) {
-                    if (task.isSuccessful()) {
-                        startActivity(new Intent(MainActivity.this, ProfileActivity.class));
-                        finish();
-                    } else {
-                        Toast.makeText(MainActivity.this, "Could not log on T_T", Toast.LENGTH_SHORT).show();
-                    }
+            mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    startActivity(new Intent(MainActivity.this, ProfileActivity.class));
+                    finish();
+                } else {
+                    Toast.makeText(MainActivity.this, "Could not log on T_T", Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -152,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
 
         // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
         if (requestCode == RC_SIGN_IN) {
@@ -170,28 +162,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
-        try{
-            GoogleSignInAccount gAccount = completedTask.getResult(ApiException.class);
-            Toast.makeText(getApplicationContext(),"Signing Success",Toast.LENGTH_SHORT).show();
-            firebaseAuthWithGoogle(gAccount);
-        }catch(ApiException e)
-        {
-            Toast.makeText(getApplicationContext(),"Signing FAiled",Toast.LENGTH_SHORT).show();
-            //FirebaseGoogleAuth(null); This is useless to call with null
-        }
-    }
-
     public void updateUI(FirebaseUser account) {
         if (account != null) {
-            Toast.makeText(this, "Sign in successful", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, ProfileActivity.class));
-            finish();
-        }
-    }
-
-    private void googleUpdateUI(GoogleSignInAccount gAccount) {
-        if(gAccount != null){
             Toast.makeText(this, "Sign in successful", Toast.LENGTH_SHORT).show();
             startActivity(new Intent(this, ProfileActivity.class));
             finish();
@@ -202,20 +174,17 @@ public class MainActivity extends AppCompatActivity {
 
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, new OnCompleteListener() {
-                    @Override
-                    public void onComplete(@NonNull Task task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            FirebaseUser user = mAuth.getCurrentUser();
-                            Intent intent = new Intent(getApplicationContext(), ProfileActivity.class);
-                            startActivity(intent);
-                        }
-                        else {
-                            Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
-                        }
-
+                .addOnCompleteListener(this, (OnCompleteListener<AuthResult>) task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        Intent intent = new Intent(getApplicationContext(), ProfileActivity.class);
+                        startActivity(intent);
                     }
+                    else {
+                        Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
+                    }
+
                 });
     }
 }
