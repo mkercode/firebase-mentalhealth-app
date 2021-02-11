@@ -94,7 +94,8 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         if (id == R.id.action_logout) {
             //change authentication state
             AuthUI.getInstance().signOut(this);
-            return true;
+            startActivity(new Intent(this, RegisterLoginActivity.class));
+            finish();
         }
         return super.onOptionsItemSelected(item);
     }
