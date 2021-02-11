@@ -33,7 +33,7 @@ public class TriggerRecyclerAdapter extends FirestoreRecyclerAdapter<Trigger, Tr
         return new TriggerViewHolder(view);
     }
 
-    class TriggerViewHolder extends RecyclerView.ViewHolder{
+    static class TriggerViewHolder extends RecyclerView.ViewHolder{
         TextView triggerText, triggerCount;
         public TriggerViewHolder(@NonNull View itemView) {
             super(itemView);
