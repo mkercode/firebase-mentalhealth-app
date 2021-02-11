@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
     GoogleSignInOptions gso;
     GoogleSignInClient mGoogleSignInClient;
+    SignInButton googleButton;
     private final static int RC_SIGN_IN = 0;
     private int clickID;
 
@@ -38,7 +39,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView forgotPassword;
     private TextView register;
     private Button loginButton;
-    SignInButton googleButton;
 
     @Override
     public void onStart() {
@@ -47,7 +47,6 @@ public class MainActivity extends AppCompatActivity {
         FirebaseUser currentUser = mAuth.getCurrentUser();
         updateUI(currentUser);
     }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,7 +117,6 @@ public class MainActivity extends AppCompatActivity {
             } else if (password.isEmpty()) {
                 editTextPassword.setError("Password is required!");
                 editTextPassword.requestFocus();
-
             } else if (password.length() < 6) {
                 editTextPassword.setError("Password must be atleast 6 characters");
                 editTextPassword.requestFocus();
@@ -171,7 +169,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
-
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         mAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, (OnCompleteListener<AuthResult>) task -> {
@@ -184,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
                     else {
                         Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
                     }
-
                 });
     }
 }

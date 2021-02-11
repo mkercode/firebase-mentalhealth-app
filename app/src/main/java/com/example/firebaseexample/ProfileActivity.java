@@ -88,6 +88,7 @@ public class ProfileActivity extends AppCompatActivity {
         });
     }
 
+    //if gAcc was used
     private void getGoogleAccount() {
         GoogleSignInAccount signInAccount = GoogleSignIn.getLastSignedInAccount(ProfileActivity.this);
         if(signInAccount != null){
