@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     GoogleSignInOptions gso;
     GoogleSignInClient mGoogleSignInClient;
     private final static int RC_SIGN_IN = 0;
+    private int clickID;
 
     private EditText editTextEmail;
     private EditText editTextPassword;
@@ -79,7 +80,6 @@ public class MainActivity extends AppCompatActivity {
         forgotPassword = findViewById(R.id.forgot_password);
         register = findViewById(R.id.register);
         loginButton = findViewById(R.id.register_button);
-
         googleButton = findViewById(R.id.google_button);
         googleButton.setSize(SignInButton.SIZE_STANDARD);
     }
@@ -96,54 +96,57 @@ public class MainActivity extends AppCompatActivity {
         });
 
         loginButton.setOnClickListener(v -> {
+            clickID = 1;
             userLogin();
         });
 
         googleButton.setOnClickListener(v -> {
-            googleLogin();
+            clickID = 2;
+            userLogin();
         });
     }
 
     private void userLogin() {
-        String email = editTextEmail.getText().toString().trim();
-        String password = editTextPassword.getText().toString().trim();
+        //if email button clicked do email sign in
+        if (clickID == 1){
+            String email = editTextEmail.getText().toString().trim();
+            String password = editTextPassword.getText().toString().trim();
 
-        //perform validations
-        if (email.isEmpty()) {
-            editTextEmail.setError("Email is required!");
-            editTextEmail.requestFocus();
-        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            editTextEmail.setError("Please enter a valid email!");
-            editTextEmail.requestFocus();
-        } else if (password.isEmpty()) {
-            editTextPassword.setError("Password is required!");
-            editTextPassword.requestFocus();
+            //perform validations
+            if (email.isEmpty()) {
+                editTextEmail.setError("Email is required!");
+                editTextEmail.requestFocus();
+            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                editTextEmail.setError("Please enter a valid email!");
+                editTextEmail.requestFocus();
+            } else if (password.isEmpty()) {
+                editTextPassword.setError("Password is required!");
+                editTextPassword.requestFocus();
 
-        } else if (password.length() < 6) {
-            editTextPassword.setError("Password must be atleast 6 characters");
-            editTextPassword.requestFocus();
-
-        }
-
-        //comlete sign in with authentication using the mAuth obect and an oncomplelistener to see if the provided credentials exist in the userbase
-        mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-            @Override
-            public void onComplete(@NonNull Task<AuthResult> task) {
-                if (task.isSuccessful()) {
-                    startActivity(new Intent(MainActivity.this, ProfileActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(MainActivity.this, "Could not log on T_T", Toast.LENGTH_SHORT).show();
-                }
+            } else if (password.length() < 6) {
+                editTextPassword.setError("Password must be atleast 6 characters");
+                editTextPassword.requestFocus();
             }
-        });
-    }
 
-    private void googleLogin() {
-        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-        startActivityForResult(signInIntent, RC_SIGN_IN);
+            //comlete sign in with authentication using the mAuth obect and an oncomplelistener to see if the provided credentials exist in the userbase
+            mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if (task.isSuccessful()) {
+                        startActivity(new Intent(MainActivity.this, ProfileActivity.class));
+                        finish();
+                    } else {
+                        Toast.makeText(MainActivity.this, "Could not log on T_T", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
+        //else do google sign in
+        else{
+            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, RC_SIGN_IN);
+        }
     }
-
 
 
     @Override
@@ -169,9 +172,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
         try{
-            GoogleSignInAccount acc = completedTask.getResult(ApiException.class);
+            GoogleSignInAccount gAccount = completedTask.getResult(ApiException.class);
             Toast.makeText(getApplicationContext(),"Signing Success",Toast.LENGTH_SHORT).show();
-            firebaseAuthWithGoogle(acc);
+            firebaseAuthWithGoogle(gAccount);
         }catch(ApiException e)
         {
             Toast.makeText(getApplicationContext(),"Signing FAiled",Toast.LENGTH_SHORT).show();
@@ -207,12 +210,9 @@ public class MainActivity extends AppCompatActivity {
                             FirebaseUser user = mAuth.getCurrentUser();
                             Intent intent = new Intent(getApplicationContext(), ProfileActivity.class);
                             startActivity(intent);
-
-
-                        } else {
-                            Toast.makeText(MainActivity.this, "Sorry auth failed.", Toast.LENGTH_SHORT).show();
-
-
+                        }
+                        else {
+                            Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
                         }
 
                     }
