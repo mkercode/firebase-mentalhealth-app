@@ -1,186 +1,143 @@
 package com.example.firebaseexample;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-
+import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.RecyclerView;
+import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.util.Patterns;
-import android.widget.Button;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.SignInButton;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.AuthResult;
+import com.firebase.ui.auth.AuthUI;
+import com.firebase.ui.firestore.FirestoreRecyclerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 
-public class MainActivity extends AppCompatActivity {
 
-    private FirebaseAuth mAuth;
+public class MainActivity extends AppCompatActivity implements FirebaseAuth.AuthStateListener{
 
-    GoogleSignInOptions gso;
-    GoogleSignInClient mGoogleSignInClient;
-    SignInButton googleButton;
-    private final static int RC_SIGN_IN = 0;
-    private int clickID;
-
-    private EditText editTextEmail;
-    private EditText editTextPassword;
-    private TextView forgotPassword;
-    private TextView register;
-    private Button loginButton;
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        // Check if user is signed in (non-null) and update UI accordingly.
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        updateUI(currentUser);
-    }
+    private RecyclerView recyclerView;
+    private TriggerRecyclerAdapter triggerRecyclerAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        createAuthentications();
-        findViews();
-        setListeners();
+        setToolbar();
+        setRecyclerView();
+        setFAB();
     }
 
-    private void createAuthentications() {
-        mAuth = FirebaseAuth.getInstance();
-
-        gso = new GoogleSignInOptions
-                .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+    //Set up the view objects
+    private void setToolbar() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setTitle("Triggers");
+        setSupportActionBar(toolbar);
     }
 
-    private void findViews() {
-        editTextEmail = findViewById(R.id.email);
-        editTextPassword = findViewById(R.id.password_input);
-        forgotPassword = findViewById(R.id.forgot_password);
-        register = findViewById(R.id.register);
-        loginButton = findViewById(R.id.register_button);
-        googleButton = findViewById(R.id.google_button);
-        googleButton.setSize(SignInButton.SIZE_STANDARD);
+    private void setRecyclerView() {
+        recyclerView = findViewById(R.id.recyclerViewContent);
     }
+    private void setFAB() {
+        FloatingActionButton addEntry = findViewById(R.id.fab);
+        @SuppressLint("UseCompatLoadingForDrawables") Drawable whiteFAB = getResources().getDrawable(android.R.drawable.ic_input_add).getConstantState().newDrawable();
+        whiteFAB.mutate().setColorFilter(Color.WHITE, PorterDuff.Mode.SRC_ATOP);
+        addEntry.setImageDrawable(whiteFAB);
 
-    private void setListeners() {
-
-        forgotPassword.setOnClickListener(v -> {
-            startActivity(new Intent(this, ForgotPassword.class));
-        });
-
-        register.setOnClickListener(v -> {
-            startActivity(new Intent(this, RegisterUser.class));
-            finish();
-        });
-
-        loginButton.setOnClickListener(v -> {
-            clickID = 1;
-            userLogin();
-        });
-
-        googleButton.setOnClickListener(v -> {
-            clickID = 2;
-            userLogin();
+        addEntry.setOnClickListener(view -> {
+            showAlertDialog();
         });
     }
 
-    private void userLogin() {
-        //if email button clicked do email sign in
-        if (clickID == 1){
-            String email = editTextEmail.getText().toString().trim();
-            String password = editTextPassword.getText().toString().trim();
+    private void showAlertDialog() {
 
-            //perform validations
-            if (email.isEmpty()) {
-                editTextEmail.setError("Email is required!");
-                editTextEmail.requestFocus();
-            } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                editTextEmail.setError("Please enter a valid email!");
-                editTextEmail.requestFocus();
-            } else if (password.isEmpty()) {
-                editTextPassword.setError("Password is required!");
-                editTextPassword.requestFocus();
-            } else if (password.length() < 6) {
-                editTextPassword.setError("Password must be atleast 6 characters");
-                editTextPassword.requestFocus();
+        EditText addTriggerText = new EditText(this);
+        new AlertDialog.Builder(this).setTitle("Add trigger")
+                .setView(addTriggerText)
+                .setPositiveButton("Add", (dialog, which) ->
+                        addTrigger(addTriggerText.getText().toString())).setNegativeButton("Cancel", null).show();
+    }
+
+    private void addTrigger(String input){
+        //create trigger object from custom class with default value of 1
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        Trigger trigger = new Trigger(input.toLowerCase().trim(), 1, userId);
+
+        FirebaseFirestore.getInstance().collection("triggers").add(trigger).addOnSuccessListener(documentReference ->
+                Log.d("ADDING TRIGGER...", "SUCCESS ADDING TRIGGER: " + trigger.getTrigger())).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Log.e("ADDING TRIGGER...", "FAILURE ADDING TRIGGER: " + trigger.getTrigger() + "... ERROR: " + e.getLocalizedMessage());
             }
-
-            //comlete sign in with authentication using the mAuth obect and an oncomplelistener to see if the provided credentials exist in the userbase
-            mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    startActivity(new Intent(MainActivity.this, ProfileActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(MainActivity.this, "Could not log on T_T", Toast.LENGTH_SHORT).show();
-                }
-            });
+        });
+    }
+    //override toolbar settings
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_logout) {
+            //change authentication state
+            AuthUI.getInstance().signOut(this);
+            return true;
         }
-        //else do google sign in
-        else{
-            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-            startActivityForResult(signInIntent, RC_SIGN_IN);
-        }
+        return super.onOptionsItemSelected(item);
     }
 
+    //keep user signed in by attatching authstatelistener to the lifecycle methods
+    @Override
+    protected void onStart() {
+        super.onStart();
+        //listen for auth state changed
+        FirebaseAuth.getInstance().addAuthStateListener(this);
+    }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
-        if (requestCode == RC_SIGN_IN) {
-            try {
-                // Google Sign In was successful, authenticate with Firebase
-                GoogleSignInAccount gAccount = GoogleSignIn.getSignedInAccountFromIntent(data).getResult(ApiException.class);
-                firebaseAuthWithGoogle(gAccount);
-            } catch (ApiException e) {
-                // Google Sign In failed, update UI appropriately
-                // ...
-                Toast.makeText(this, "Failed Signin", Toast.LENGTH_SHORT).show();
-            } catch (Throwable throwable) {
-                throwable.printStackTrace();
-            }
+    protected void onStop() {
+        super.onStop();
+        FirebaseAuth.getInstance().removeAuthStateListener(this);
+        if(triggerRecyclerAdapter != null){
+            triggerRecyclerAdapter.stopListening();
         }
     }
 
-    public void updateUI(FirebaseUser account) {
-        if (account != null) {
-            Toast.makeText(this, "Sign in successful", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, ProfileActivity.class));
+    //monitor if the json web token expires
+    @Override
+    public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+        if(firebaseAuth.getCurrentUser() == null){
+            startActivity(new Intent(this, RegisterLoginActivity.class));
             finish();
         }
+        //recreate recyclerview when state changed
+        createRecyclerView(firebaseAuth.getCurrentUser());
     }
+    private void createRecyclerView(FirebaseUser user){
+        Query query = FirebaseFirestore.getInstance()
+                .collection("triggers")
+                .whereEqualTo("userId", user.getUid());
 
-    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
-        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-        mAuth.signInWithCredential(credential)
-                .addOnCompleteListener(this, (OnCompleteListener<AuthResult>) task -> {
-                    if (task.isSuccessful()) {
-                        // Sign in success, update UI with the signed-in user's information
-                        FirebaseUser user = mAuth.getCurrentUser();
-                        Intent intent = new Intent(getApplicationContext(), ProfileActivity.class);
-                        startActivity(intent);
-                    }
-                    else {
-                        Toast.makeText(MainActivity.this, "Authentication failed.", Toast.LENGTH_SHORT).show();
-                    }
-                });
+        //build firestore recycler options
+        FirestoreRecyclerOptions<Trigger> options = new FirestoreRecyclerOptions.Builder<Trigger>()
+                .setQuery(query, Trigger.class)
+                .build();
+        triggerRecyclerAdapter = new TriggerRecyclerAdapter(options);
+        recyclerView.setAdapter(triggerRecyclerAdapter);
+        //listen for updates in realtime to add to recyclerview
+        triggerRecyclerAdapter.startListening();
     }
 }
