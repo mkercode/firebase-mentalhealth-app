@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         }
     }
 
-    //handle changes to the trigger string
+    //methods for changes to DB
     @Override
     public void clickEditItem(DocumentSnapshot clickedSnapshot) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -232,7 +232,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         snapshotInput.getReference().update("trigger", triggerChange).addOnFailureListener(e -> {
             Log.e(failTAG, "updateSnapshotTrigger: " + snapshotInput.getData() + " with trigger " + triggerChange, e);
         }).addOnSuccessListener(aVoid -> {
-
+            Log.d(successTAG, "onSuccess: updating document " + snapshotInput.getData() + "... by " + triggerChange);
         });
     }
 
@@ -255,6 +255,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         });
     }
 
+    //open the login activity and close this one when signing out
     private void signOut(){
         Intent intent = new Intent(this, RegisterLoginActivity.class);
         startActivity(intent);
