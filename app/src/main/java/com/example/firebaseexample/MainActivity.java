@@ -17,7 +17,6 @@ import android.view.MenuItem;
 import android.widget.EditText;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.firestore.FirestoreRecyclerOptions;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -27,6 +26,9 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
 
 public class MainActivity extends AppCompatActivity implements FirebaseAuth.AuthStateListener, TriggerRecyclerAdapter.TriggerListener {
 
@@ -34,6 +36,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
     private TriggerRecyclerAdapter triggerRecyclerAdapter;
     private final String failTAG = "FAILED OPERATION ";
     private final String successTAG = "SUCCEEDED OPERATION ";
+    private List<DocumentSnapshot> snapshotList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,16 +78,6 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
                         addTrigger(addTriggerText.getText().toString())).setNegativeButton("Cancel", null).show();
     }
 
-    private void addTrigger(String input){
-        //create trigger object from custom class with default value of 1
-        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        Trigger trigger = new Trigger(input.toLowerCase().trim(), 1, userId);
-
-        FirebaseFirestore.getInstance().collection("triggers").add(trigger).addOnSuccessListener(documentReference ->
-                Log.d("ADDING TRIGGER...", "SUCCESS ADDING TRIGGER: " + trigger.getTrigger()))
-                .addOnFailureListener(e ->
-                Log.e("ADDING TRIGGER...", "FAILURE ADDING TRIGGER: " + trigger.getTrigger() + "... ERROR: " + e.getLocalizedMessage()));
-    }
     //override toolbar settings
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -152,16 +145,114 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
 
         //if we click minus on the trigger and the value is 1, delete it
         if(incrementNum == -1 && trigger.getNumTimes() == 1){
-            snapshot.getReference().delete()
-                    .addOnFailureListener(e -> Log.e(failTAG, "onFailure: deleting trigger " + trigger.getTrigger() , e))
-                    .addOnSuccessListener(aVoid -> Log.d(successTAG, "onSuccess: deleting trigger " + trigger.getTrigger()));
+            deleteSnapshot(snapshot);
         }
         //else increment it
         else {
-            snapshot.getReference().update("numTimes", FieldValue.increment(incrementNum))
-                    .addOnFailureListener(e -> Log.e(failTAG, "onFailure: incrementing trigger " + trigger.getTrigger() + "... by " + incrementNum, e))
-                    .addOnSuccessListener(aVoid -> Log.d(successTAG, "onSuccess: incrementing document " + trigger.getTrigger() + "... by " + incrementNum));
+            incrementNumTimes(snapshot, incrementNum);
         }
+    }
+
+    //handle changes to the trigger string
+    @Override
+    public void clickEditItem(DocumentSnapshot clickedSnapshot) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        String userID = user.getUid();
+
+        Trigger clickedTrigger = clickedSnapshot.toObject(Trigger.class);
+        EditText editTextField = new EditText(this);
+
+        editTextField.setText(clickedTrigger.getTrigger());
+        new AlertDialog.Builder(this).setTitle("Edit Trigger").setView(editTextField)
+                .setPositiveButton("Confirm", (dialog, i) -> {
+
+                    String editedTrigger = editTextField.getText().toString().toLowerCase().trim();
+
+                    //get all the documents by the user
+                    FirebaseFirestore.getInstance().collection("triggers").whereEqualTo("userId", userID).get().addOnFailureListener(e -> {
+                        Log.e(failTAG, "onFailure: fetching entries identical to " + clickedTrigger.getTrigger() +"... by ", e); })
+                            .addOnSuccessListener(queryDocumentSnapshots -> {
+
+                                snapshotList = queryDocumentSnapshots.getDocuments();
+                                for(DocumentSnapshot loopSnapshot: snapshotList){
+
+                                    Trigger loopTrigger = loopSnapshot.toObject(Trigger.class);
+//
+                                    //if the trigger we are changing the field to already exists...
+                                    if(editedTrigger.equals(loopTrigger.getTrigger().toLowerCase().trim())){
+                                        Log.d(successTAG, "clickEditItem: " + loopSnapshot.getData());
+                                        //add the numTimes amount of the document with the same name to the existing trigger document
+                                        incrementNumTimes(loopSnapshot, clickedTrigger.getNumTimes());
+                                        //delete the docuemnt snapshot with the same name
+                                        deleteSnapshot(clickedSnapshot);
+                                        //break out of loop
+                                        break;
+                                    }
+                                }
+                                if(clickedSnapshot.getReference() != null){
+                                    updateTrigger(clickedSnapshot, editedTrigger);
+                                }
+                            });
+                }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void addTrigger(String input) {
+        //create trigger object from custom class with default value of 1
+        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        //get all the documents by the user
+        FirebaseFirestore.getInstance().collection("triggers").whereEqualTo("userId", userId).get().addOnFailureListener(e -> {
+            Log.e(failTAG, "onFailure: fetching entries identical to " + input +"... by ", e); })
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    boolean isDuplicate = false;
+                    snapshotList = queryDocumentSnapshots.getDocuments();
+                    for (DocumentSnapshot loopSnapshot : snapshotList) {
+
+                        Trigger loopTrigger = loopSnapshot.toObject(Trigger.class);
+                        String compareTrigger = loopTrigger.getTrigger().toLowerCase().trim();
+                        //if the trigger we are changing the field to already exists...
+                        if (input.toLowerCase().trim().equals(compareTrigger)) {
+                            //add the numTimes amount of the document with the same name to the existing trigger document
+                            incrementNumTimes(loopSnapshot, 1);
+                            isDuplicate = true;
+                            //break out of loop
+                            break;
+                        }
+                    }
+                    if (!isDuplicate){
+                        Trigger trigger = new Trigger(input.toLowerCase().trim(), 1, userId);
+                        FirebaseFirestore.getInstance().collection("triggers").add(trigger).addOnSuccessListener(documentReference ->
+                                Log.d("ADDING TRIGGER...", "SUCCESS ADDING TRIGGER: " + trigger.getTrigger()))
+                                .addOnFailureListener(e -> Log.e("ADDING TRIGGER...", "FAILURE ADDING TRIGGER: " + trigger.getTrigger() + "... ERROR: ", e));
+                    }
+                });
+    }
+
+    private void updateTrigger(DocumentSnapshot snapshotInput, String triggerChange){
+        snapshotInput.getReference().update("trigger", triggerChange).addOnFailureListener(e -> {
+            Log.e(failTAG, "updateSnapshotTrigger: " + snapshotInput.getData() + " with trigger " + triggerChange, e);
+        }).addOnSuccessListener(aVoid -> {
+
+        });
+    }
+
+    private void incrementNumTimes(DocumentSnapshot snapshotInput, int incrementValue){
+        snapshotInput.getReference().update("numTimes", FieldValue.increment(incrementValue)).addOnFailureListener(e -> {
+            Log.e(failTAG, "incrementSnapshotNumTimes: " + snapshotInput.getData() + " with value " + incrementValue, e);
+        }).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                Log.d(successTAG, "onSuccess: incrementing document " + snapshotInput.getData() + "... by " + incrementValue);
+            }
+        });
+    }
+
+    private void deleteSnapshot(DocumentSnapshot snapshotInput){
+        snapshotInput.getReference().delete().addOnFailureListener(e -> {
+            Log.e(failTAG, "deleteSnapshot: " + snapshotInput.getData(), e);
+        }).addOnSuccessListener(aVoid -> {
+            Log.d(successTAG, "deleteSnapshot: " + snapshotInput.getData());
+        });
     }
 
     private void signOut(){
