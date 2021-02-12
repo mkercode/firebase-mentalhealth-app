@@ -17,6 +17,8 @@ import android.view.MenuItem;
 import android.widget.EditText;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.firestore.FirestoreRecyclerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -30,6 +32,8 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
 
     private RecyclerView recyclerView;
     private TriggerRecyclerAdapter triggerRecyclerAdapter;
+    private final String failTAG = "FAILED OPERATION ";
+    private final String successTAG = "SUCCEEDED OPERATION ";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,8 +146,39 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         triggerRecyclerAdapter.startListening();
     }
 
+    //handle the plus and minus clicks from the interface
     @Override
     public void clickPlusMinus(DocumentSnapshot snapshot, int incrementNum) {
-        snapshot.getReference().update("numTimes", FieldValue.increment(incrementNum));
+        //create Trigger object with current snapshot
+        Trigger trigger = snapshot.toObject(Trigger.class);
+
+        //if we click minus on the trigger and the value is 1, delete it
+        if(incrementNum == -1 && trigger.getNumTimes() == 1){
+            snapshot.getReference().delete().addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Log.e(failTAG, "onFailure: deleting trigger " + trigger.getTrigger() , e);
+                }
+            }).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(successTAG, "onSuccess: deleting trigger " + trigger.getTrigger());
+                }
+            });
+        }
+        //else increment it
+        else {
+            snapshot.getReference().update("numTimes", FieldValue.increment(incrementNum)).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    Log.e(failTAG, "onFailure: incrementing trigger " + trigger.getTrigger() + "... by " + incrementNum, e);
+                }
+            }).addOnSuccessListener(new OnSuccessListener<Void>() {
+                @Override
+                public void onSuccess(Void aVoid) {
+                    Log.d(successTAG, "onSuccess: incrementing document " + trigger.getTrigger() + "... by " + incrementNum);
+                }
+            });
+        }
     }
 }
