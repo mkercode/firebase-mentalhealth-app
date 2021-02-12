@@ -97,8 +97,6 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         if (id == R.id.action_logout) {
             //change authentication state
             AuthUI.getInstance().signOut(this);
-            startActivity(new Intent(this, RegisterLoginActivity.class));
-            finish();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -124,8 +122,8 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
     @Override
     public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
         if(firebaseAuth.getCurrentUser() == null){
-            startActivity(new Intent(this, RegisterLoginActivity.class));
-            finish();
+            signOut();
+            return;
         }
         //recreate recyclerview when state changed
         createRecyclerView(firebaseAuth.getCurrentUser());
@@ -180,5 +178,11 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
                 }
             });
         }
+    }
+
+    private void signOut(){
+        Intent intent = new Intent(this, RegisterLoginActivity.class);
+        startActivity(intent);
+        finish();
     }
 }
