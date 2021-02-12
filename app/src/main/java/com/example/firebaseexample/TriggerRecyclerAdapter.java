@@ -46,6 +46,11 @@ public class TriggerRecyclerAdapter extends FirestoreRecyclerAdapter<Trigger, Tr
             plus = itemView.findViewById(R.id.addCount);
             minus = itemView.findViewById(R.id.subtractCount);
 
+            itemView.setOnClickListener(v -> {
+                DocumentSnapshot snapshot = getSnapshots().getSnapshot(getAdapterPosition());
+                triggerListener.clickEditItem(snapshot);
+            });
+
             plus.setOnClickListener(v -> {
                 DocumentSnapshot snapshot = getSnapshots().getSnapshot(getAdapterPosition());
                 triggerListener.clickPlusMinus(snapshot,1);
@@ -59,6 +64,8 @@ public class TriggerRecyclerAdapter extends FirestoreRecyclerAdapter<Trigger, Tr
         }
     }
     interface TriggerListener {
+        //handle numTimes increments when clicking +/-
         public void clickPlusMinus(DocumentSnapshot snapshot, int increment);
+        public void clickEditItem(DocumentSnapshot snapshot);
     }
 }
