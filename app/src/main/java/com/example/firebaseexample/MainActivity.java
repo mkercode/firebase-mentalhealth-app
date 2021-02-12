@@ -17,15 +17,16 @@ import android.view.MenuItem;
 import android.widget.EditText;
 import com.firebase.ui.auth.AuthUI;
 import com.firebase.ui.firestore.FirestoreRecyclerOptions;
-import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 
 
-public class MainActivity extends AppCompatActivity implements FirebaseAuth.AuthStateListener{
+public class MainActivity extends AppCompatActivity implements FirebaseAuth.AuthStateListener, TriggerRecyclerAdapter.TriggerListener {
 
     private RecyclerView recyclerView;
     private TriggerRecyclerAdapter triggerRecyclerAdapter;
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
     private void setRecyclerView() {
         recyclerView = findViewById(R.id.recyclerViewContent);
     }
+
     private void setFAB() {
         FloatingActionButton addEntry = findViewById(R.id.fab);
         @SuppressLint("UseCompatLoadingForDrawables") Drawable whiteFAB = getResources().getDrawable(android.R.drawable.ic_input_add).getConstantState().newDrawable();
@@ -75,12 +77,9 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         Trigger trigger = new Trigger(input.toLowerCase().trim(), 1, userId);
 
         FirebaseFirestore.getInstance().collection("triggers").add(trigger).addOnSuccessListener(documentReference ->
-                Log.d("ADDING TRIGGER...", "SUCCESS ADDING TRIGGER: " + trigger.getTrigger())).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                Log.e("ADDING TRIGGER...", "FAILURE ADDING TRIGGER: " + trigger.getTrigger() + "... ERROR: " + e.getLocalizedMessage());
-            }
-        });
+                Log.d("ADDING TRIGGER...", "SUCCESS ADDING TRIGGER: " + trigger.getTrigger()))
+                .addOnFailureListener(e ->
+                Log.e("ADDING TRIGGER...", "FAILURE ADDING TRIGGER: " + trigger.getTrigger() + "... ERROR: " + e.getLocalizedMessage()));
     }
     //override toolbar settings
     @Override
@@ -127,6 +126,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         //recreate recyclerview when state changed
         createRecyclerView(firebaseAuth.getCurrentUser());
     }
+
     private void createRecyclerView(FirebaseUser user){
         Query query = FirebaseFirestore.getInstance()
                 .collection("triggers")
@@ -136,9 +136,14 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         FirestoreRecyclerOptions<Trigger> options = new FirestoreRecyclerOptions.Builder<Trigger>()
                 .setQuery(query, Trigger.class)
                 .build();
-        triggerRecyclerAdapter = new TriggerRecyclerAdapter(options);
+        triggerRecyclerAdapter = new TriggerRecyclerAdapter(options, this);
         recyclerView.setAdapter(triggerRecyclerAdapter);
         //listen for updates in realtime to add to recyclerview
         triggerRecyclerAdapter.startListening();
+    }
+
+    @Override
+    public void clickPlusMinus(DocumentSnapshot snapshot, int incrementNum) {
+        snapshot.getReference().update("numTimes", FieldValue.increment(incrementNum));
     }
 }
