@@ -152,31 +152,15 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
 
         //if we click minus on the trigger and the value is 1, delete it
         if(incrementNum == -1 && trigger.getNumTimes() == 1){
-            snapshot.getReference().delete().addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    Log.e(failTAG, "onFailure: deleting trigger " + trigger.getTrigger() , e);
-                }
-            }).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void aVoid) {
-                    Log.d(successTAG, "onSuccess: deleting trigger " + trigger.getTrigger());
-                }
-            });
+            snapshot.getReference().delete()
+                    .addOnFailureListener(e -> Log.e(failTAG, "onFailure: deleting trigger " + trigger.getTrigger() , e))
+                    .addOnSuccessListener(aVoid -> Log.d(successTAG, "onSuccess: deleting trigger " + trigger.getTrigger()));
         }
         //else increment it
         else {
-            snapshot.getReference().update("numTimes", FieldValue.increment(incrementNum)).addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    Log.e(failTAG, "onFailure: incrementing trigger " + trigger.getTrigger() + "... by " + incrementNum, e);
-                }
-            }).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void aVoid) {
-                    Log.d(successTAG, "onSuccess: incrementing document " + trigger.getTrigger() + "... by " + incrementNum);
-                }
-            });
+            snapshot.getReference().update("numTimes", FieldValue.increment(incrementNum))
+                    .addOnFailureListener(e -> Log.e(failTAG, "onFailure: incrementing trigger " + trigger.getTrigger() + "... by " + incrementNum, e))
+                    .addOnSuccessListener(aVoid -> Log.d(successTAG, "onSuccess: incrementing document " + trigger.getTrigger() + "... by " + incrementNum));
         }
     }
 
