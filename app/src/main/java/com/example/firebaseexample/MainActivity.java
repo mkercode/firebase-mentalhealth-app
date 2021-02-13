@@ -125,7 +125,8 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
     private void createRecyclerView(FirebaseUser user){
         Query query = FirebaseFirestore.getInstance()
                 .collection("triggers")
-                .whereEqualTo("userId", user.getUid());
+                .whereEqualTo("userId", user.getUid())
+                .orderBy("numTimes", Query.Direction.ASCENDING);
 
         //build firestore recycler options
         FirestoreRecyclerOptions<Trigger> options = new FirestoreRecyclerOptions.Builder<Trigger>()
