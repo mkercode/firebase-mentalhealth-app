@@ -11,4 +11,5 @@
     <string name="brain_logo">Brain Logo</string>
     <string name="login_register">Login/Register</string>
     <string name="app_logo">Brain go big!</string>
+    <string name="add_trigger">Add Trigger</string>
 </resources>

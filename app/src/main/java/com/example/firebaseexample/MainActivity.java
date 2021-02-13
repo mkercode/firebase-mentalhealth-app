@@ -1,6 +1,7 @@
 package com.example.firebaseexample;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -16,16 +17,29 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import com.firebase.ui.auth.AuthUI;
+import com.firebase.ui.firestore.FirestoreArray;
 import com.firebase.ui.firestore.FirestoreRecyclerOptions;
+import com.github.mikephil.charting.charts.PieChart;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.data.PieData;
+import com.github.mikephil.charting.data.PieDataSet;
+import com.github.mikephil.charting.data.PieEntry;
+import com.github.mikephil.charting.formatter.PercentFormatter;
+import com.github.mikephil.charting.utils.ColorTemplate;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -34,9 +48,11 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
 
     private RecyclerView recyclerView;
     private TriggerRecyclerAdapter triggerRecyclerAdapter;
+    private PieChart pieChart;
     private final String failTAG = "FAILED OPERATION ";
     private final String successTAG = "SUCCEEDED OPERATION ";
     private List<DocumentSnapshot> snapshotList;
+    private List<DocumentSnapshot> documentList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
 
     private void setRecyclerView() {
         recyclerView = findViewById(R.id.recyclerViewContent);
+        pieChart = findViewById(R.id.pieChart);
     }
 
     private void setFAB() {
@@ -68,6 +85,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
             showAlertDialog();
         });
     }
+
 
     private void showAlertDialog() {
 
@@ -132,10 +150,65 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         FirestoreRecyclerOptions<Trigger> options = new FirestoreRecyclerOptions.Builder<Trigger>()
                 .setQuery(query, Trigger.class)
                 .build();
+
         triggerRecyclerAdapter = new TriggerRecyclerAdapter(options, this);
         recyclerView.setAdapter(triggerRecyclerAdapter);
         //listen for updates in realtime to add to recyclerview
         triggerRecyclerAdapter.startListening();
+
+        //create list of triggers for piechart
+        query.addSnapshotListener((value, e) -> {
+            if (e != null) {
+                Log.w(failTAG, "Listen failed.", e);
+                return;
+            }
+            List<Trigger> triggerList = value.toObjects(Trigger.class);
+            setupPieChart();
+            createPieChart(triggerList);
+        });
+    }
+
+    private void setupPieChart() {
+        pieChart.setDrawHoleEnabled(true);
+        pieChart.setUsePercentValues(true);
+        pieChart.setEntryLabelTextSize(12);
+        pieChart.setEntryLabelColor(Color.BLACK);
+        pieChart.setCenterText("Trigger Insights");
+        pieChart.setCenterTextSize(24);
+        pieChart.getDescription().setEnabled(false);
+
+        Legend l = pieChart.getLegend();
+        l.setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
+        l.setHorizontalAlignment(Legend.LegendHorizontalAlignment.RIGHT);
+        l.setOrientation(Legend.LegendOrientation.VERTICAL);
+        l.setDrawInside(false);
+        l.setEnabled(true);
+    }
+    private void createPieChart(List<Trigger> triggerList){
+        ArrayList<PieEntry> entries = new ArrayList<>();
+        for(Trigger trigger: triggerList){
+            float floatValue = (float) trigger.getNumTimes();
+            entries.add(new PieEntry(floatValue, trigger.getTrigger()));
+        }
+
+        //set colors
+        ArrayList<Integer> colors = new ArrayList<>();
+        for(int color: ColorTemplate.VORDIPLOM_COLORS){
+            colors.add(color);
+        }
+
+        //write arrays to piechart
+        PieDataSet dataSet = new PieDataSet(entries, "Trigger Insights");
+        dataSet.setColors(colors);
+
+        PieData data = new PieData(dataSet);
+        data.setDrawValues(true);
+        data.setValueFormatter(new PercentFormatter(pieChart));
+        data.setValueTextSize(12f);
+        data.setValueTextColor(Color.BLACK);
+
+        pieChart.setData(data);
+        pieChart.invalidate();
     }
 
     //handle the plus and minus clicks from the interface

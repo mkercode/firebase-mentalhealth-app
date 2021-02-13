@@ -46,6 +46,9 @@ dependencies {
     // FirebaseUI for Firebase Realtime Database
     implementation 'com.firebaseui:firebase-ui-firestore:7.1.1'
 
+    //implementation for chart
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+
     implementation 'androidx.navigation:navigation-fragment:2.3.3'
     implementation 'androidx.navigation:navigation-ui:2.3.3'
     testImplementation 'junit:junit:4.+'
