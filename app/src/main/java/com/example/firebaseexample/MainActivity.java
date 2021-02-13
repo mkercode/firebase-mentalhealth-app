@@ -1,7 +1,6 @@
 package com.example.firebaseexample;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -17,8 +16,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import com.firebase.ui.auth.AuthUI;
-import com.firebase.ui.firestore.FirestoreArray;
 import com.firebase.ui.firestore.FirestoreRecyclerOptions;
+import com.github.mikephil.charting.animation.Easing;
 import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.components.Legend;
 import com.github.mikephil.charting.data.PieData;
@@ -31,17 +30,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 
 public class MainActivity extends AppCompatActivity implements FirebaseAuth.AuthStateListener, TriggerRecyclerAdapter.TriggerListener {
@@ -61,6 +55,12 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         setToolbar();
         setRecyclerView();
         setFAB();
+        animateChart();
+    }
+
+    private void animateChart() {
+        //add animation
+        pieChart.animateY(1400, Easing.EaseInOutQuad);
     }
 
     //Set up the view objects
@@ -84,6 +84,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         addEntry.setOnClickListener(view -> {
             showAlertDialog();
         });
+
     }
 
 
@@ -164,47 +165,54 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
             }
             List<Trigger> triggerList = value.toObjects(Trigger.class);
             setupPieChart();
-            createPieChart(triggerList);
+            populatePieChart(triggerList);
         });
     }
 
     private void setupPieChart() {
         pieChart.setDrawHoleEnabled(true);
+        pieChart.setCenterTextColor(Color.DKGRAY);
+        pieChart.setDrawRoundedSlices(true);
         pieChart.setUsePercentValues(true);
-        pieChart.setEntryLabelTextSize(12);
+        pieChart.setEntryLabelTextSize(14);
+        pieChart.setHoleRadius(40);
         pieChart.setEntryLabelColor(Color.BLACK);
         pieChart.setCenterText("Trigger Insights");
         pieChart.setCenterTextSize(24);
         pieChart.getDescription().setEnabled(false);
+        Legend legend = pieChart.getLegend();
+        legend.setEnabled(false);
 
-        Legend l = pieChart.getLegend();
-        l.setVerticalAlignment(Legend.LegendVerticalAlignment.TOP);
-        l.setHorizontalAlignment(Legend.LegendHorizontalAlignment.RIGHT);
-        l.setOrientation(Legend.LegendOrientation.VERTICAL);
-        l.setDrawInside(false);
-        l.setEnabled(true);
     }
-    private void createPieChart(List<Trigger> triggerList){
+    private void populatePieChart(List<Trigger> triggerList){
+
+
         ArrayList<PieEntry> entries = new ArrayList<>();
         for(Trigger trigger: triggerList){
             float floatValue = (float) trigger.getNumTimes();
             entries.add(new PieEntry(floatValue, trigger.getTrigger()));
         }
-
         //set colors
         ArrayList<Integer> colors = new ArrayList<>();
+
         for(int color: ColorTemplate.VORDIPLOM_COLORS){
+            colors.add(color);
+        }
+        for(int color: ColorTemplate.JOYFUL_COLORS){
+            colors.add(color);
+        }
+        for(int color: ColorTemplate.PASTEL_COLORS){
             colors.add(color);
         }
 
         //write arrays to piechart
-        PieDataSet dataSet = new PieDataSet(entries, "Trigger Insights");
+        PieDataSet dataSet = new PieDataSet(entries,"Triggers");
         dataSet.setColors(colors);
 
         PieData data = new PieData(dataSet);
         data.setDrawValues(true);
         data.setValueFormatter(new PercentFormatter(pieChart));
-        data.setValueTextSize(12f);
+        data.setValueTextSize(14f);
         data.setValueTextColor(Color.BLACK);
 
         pieChart.setData(data);
